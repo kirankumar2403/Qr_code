@@ -179,7 +179,6 @@ app.post("/api/sessions/create", async (req, res) => {
 });
 
 // Get all sessions with attendance count (Admin panel)
-// Get all sessions with attendance count (Admin panel)
 app.get("/api/admin/sessions", async (req, res) => {
   try {
     const sessions = await Session.find().sort({ createdAt: -1 });

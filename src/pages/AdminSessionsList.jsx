@@ -200,7 +200,7 @@ const styles = {
     width: "100%",
     padding: "10px",
     backgroundColor: "black",
-    color: "white",
+    color: "green",
     border: "none",
     borderRadius: "5px",
     cursor: "pointer"
@@ -214,7 +214,7 @@ const styles = {
   toggleButton: {
     padding: "6px 12px",
     border: "1px solid #333",
-    backgroundColor: "white",
+    backgroundColor: "black",
     cursor: "pointer",
     borderRadius: "4px"
   },
