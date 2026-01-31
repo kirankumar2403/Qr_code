@@ -131,6 +131,27 @@ app.post("/api/admin/sessions/:sessionId/generate-code", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+// ---------------- Admin: View attendance for a session ----------------
+app.get("/api/admin/sessions/:sessionId/attendance", async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    const records = await Attendance.find({ sessionId })
+      .populate("userId", "fullName email");
+
+    const result = records.map((record) => ({
+      studentName: record.userId.fullName,
+      email: record.userId.email,
+      markedAt: record.markedAt
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Fetch session attendance error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Toggle attendance code active/inactive
 app.post("/api/admin/sessions/:sessionId/toggle-code", async (req, res) => {
   try {
@@ -260,10 +281,29 @@ app.get("/api/sessions/live", async (req, res) => {
 // Mark attendance
 app.post("/api/attendance/mark", async (req, res) => {
   try {
-    const { userId, sessionId } = req.body;
+    const { userId, sessionId, code } = req.body;
 
-    if (!userId || !sessionId) {
-      return res.status(400).json({ message: "userId and sessionId required" });
+    if (!userId || !sessionId || !code) {
+      return res.status(400).json({
+        message: "userId, sessionId and code are required"
+      });
+    }
+
+    const session = await Session.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    if (!session.isLive) {
+      return res.status(400).json({ message: "Session is not live" });
+    }
+
+    if (!session.codeActive) {
+      return res.status(403).json({ message: "Attendance code is inactive" });
+    }
+
+    if (session.attendanceCode !== code) {
+      return res.status(401).json({ message: "Invalid attendance code" });
     }
 
     const existing = await Attendance.findOne({ userId, sessionId });
@@ -271,8 +311,7 @@ app.post("/api/attendance/mark", async (req, res) => {
       return res.status(409).json({ message: "Attendance already marked" });
     }
 
-    const attendance = new Attendance({ userId, sessionId });
-    await attendance.save();
+    await Attendance.create({ userId, sessionId });
 
     res.status(201).json({ message: "Attendance marked successfully" });
   } catch (err) {
@@ -280,6 +319,7 @@ app.post("/api/attendance/mark", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 
 // Get attendance of a user
 app.get("/api/attendance/:userId", async (req, res) => {

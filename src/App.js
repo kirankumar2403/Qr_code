@@ -26,6 +26,7 @@ function App() {
       <Route path="/auth/google/callback" element={<GoogleCallback />} />
       <Route path="/admin/" element={<AdminAddSession />} />
       <Route path="/admin/sessions" element={<AdminSessionsList />} />
+      
 
       {/* App Pages */}
       <Route path="/dashboard" element={<Dashboard />} />
@@ -33,6 +34,7 @@ function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
       <Route path="/admin/" element={<AdminAddSession />} />
       <Route path="/admin/sessions" element={<AdminSessionsList />} />
+ 
     </Routes>
   );
 }

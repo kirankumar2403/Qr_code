@@ -7,13 +7,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // For demo: get logged-in user from localStorage
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [enteredCode, setEnteredCode] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  // Logged-in user (stored after login)
   const user = JSON.parse(localStorage.getItem("user"));
 
   useEffect(() => {
     fetchLiveSessions();
-
-    // Auto-refresh every 30 seconds
     const interval = setInterval(fetchLiveSessions, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -21,7 +23,9 @@ export default function Dashboard() {
   const fetchLiveSessions = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/sessions/live`);
+      const res = await fetch(
+        `${API_BASE}/sessions/live?userId=${user?._id}`
+      );
       if (!res.ok) throw new Error("Failed to fetch sessions");
       const data = await res.json();
       setSessions(data);
@@ -32,39 +36,52 @@ export default function Dashboard() {
     }
   };
 
-  const markAttendance = async (sessionId) => {
-    try {
-      if (!user) {
-        alert("Please login first");
-        return;
-      }
+  const openAttendanceForm = (sessionId) => {
+    setSelectedSessionId(sessionId);
+    setEnteredCode("");
+  };
 
+  const submitAttendance = async () => {
+    if (!enteredCode.trim()) {
+      alert("Please enter attendance code");
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
       const res = await fetch(`${API_BASE}/attendance/mark`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user._id,
-          sessionId: sessionId
+          sessionId: selectedSessionId,
+          code: enteredCode.trim()
         })
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.message || "Failed to mark attendance");
+        alert(data.message);
         return;
       }
 
-      // Update UI after marking attendance
-      setSessions((prev) =>
-        prev.map((s) =>
-          s._id === sessionId ? { ...s, attended: true } : s
+      alert("Attendance marked successfully");
+
+      // Update UI
+      setSessions(prev =>
+        prev.map(s =>
+          s._id === selectedSessionId ? { ...s, attended: true } : s
         )
       );
 
-      alert("Attendance marked successfully");
-    } catch (err) {
-      alert("Server error while marking attendance");
+      setSelectedSessionId(null);
+      setEnteredCode("");
+    } catch {
+      alert("Server error");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -78,7 +95,7 @@ export default function Dashboard() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.heading}>Live Sessions Dashboard</h2>
+      <h2 style={styles.heading}>Live Sessions</h2>
 
       {sessions.length === 0 && (
         <p style={styles.noData}>No live sessions available</p>
@@ -92,17 +109,41 @@ export default function Dashboard() {
             <p><b>Time:</b> {session.startTime} - {session.endTime}</p>
             <p><b>Status:</b> {session.isLive ? "Live" : "Upcoming"}</p>
 
-            <button
-              style={
-                session.attended
-                  ? { ...styles.button, backgroundColor: "#aaa" }
-                  : styles.button
-              }
-              disabled={session.attended}
-              onClick={() => markAttendance(session._id)}
-            >
-              {session.attended ? "Attendance Marked" : "Mark Attendance"}
-            </button>
+            {session.attended ? (
+              <button style={{ ...styles.button, backgroundColor: "green" }} disabled>
+                Attended
+              </button>
+            ) : (
+              <>
+                <button
+                  style={styles.button}
+                  onClick={() => openAttendanceForm(session._id)}
+                >
+                  Mark Attendance
+                </button>
+
+                {selectedSessionId === session._id && (
+                  <div style={styles.codeBox}>
+                    <input
+                      type="text"
+                      placeholder="Enter attendance code"
+                      value={enteredCode}
+                      onChange={(e) =>
+                        setEnteredCode(e.target.value.toUpperCase())
+                      }
+                      style={styles.input}
+                    />
+                    <button
+                      style={styles.submitBtn}
+                      onClick={submitAttendance}
+                      disabled={submitting}
+                    >
+                      {submitting ? "Submitting..." : "Submit"}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -110,7 +151,8 @@ export default function Dashboard() {
   );
 }
 
-// ---------------- Simple Inline Styles ----------------
+/* ---------------- STYLES ---------------- */
+
 const styles = {
   container: {
     padding: "30px",
@@ -139,6 +181,24 @@ const styles = {
     color: "white",
     border: "none",
     borderRadius: "5px",
+    cursor: "pointer"
+  },
+  codeBox: {
+    marginTop: "10px",
+    display: "flex",
+    gap: "8px"
+  },
+  input: {
+    flex: 1,
+    padding: "8px",
+    textTransform: "uppercase"
+  },
+  submitBtn: {
+    padding: "8px 12px",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
     cursor: "pointer"
   },
   center: {

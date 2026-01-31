@@ -7,6 +7,10 @@ export default function AdminSessionsList() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [attendanceData, setAttendanceData] = useState([]);
+const [showAttendance, setShowAttendance] = useState(false);
+const [loadingAttendance, setLoadingAttendance] = useState(false);
+
 
   // Track per-session view mode: "code" or "qr"
   const [viewMode, setViewMode] = useState({}); 
@@ -53,17 +57,27 @@ export default function AdminSessionsList() {
 
   const viewAttendance = async (sessionId) => {
     try {
+      setLoadingAttendance(true);
+  
       const res = await fetch(
         `${API_BASE}/admin/sessions/${sessionId}/attendance`
       );
+  
+      if (!res.ok) {
+        throw new Error("Failed to fetch attendance");
+      }
+  
       const data = await res.json();
-
-      alert(`Students attended: ${data.length}`);
-      console.log("Attendance details:", data);
+  
+      setAttendanceData(data);
+      setShowAttendance(true);
     } catch (err) {
       alert("Failed to fetch attendance details");
+    } finally {
+      setLoadingAttendance(false);
     }
   };
+  
 
   if (loading) {
     return <div style={styles.center}>Loading sessions...</div>;
@@ -80,6 +94,48 @@ export default function AdminSessionsList() {
       {sessions.length === 0 && (
         <p style={styles.center}>No sessions found</p>
       )}
+      {showAttendance && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modal}>
+      <h3>Attendance Details</h3>
+
+      {loadingAttendance ? (
+        <p>Loading...</p>
+      ) : attendanceData.length === 0 ? (
+        <p>No students attended yet.</p>
+      ) : (
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Marked At</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attendanceData.map((student, index) => (
+              <tr key={index}>
+                <td>{student.studentName}</td>
+                <td>{student.email}</td>
+                <td>
+                  {new Date(student.markedAt).toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      <button
+        style={{ ...styles.button, marginTop: "15px" }}
+        onClick={() => setShowAttendance(false)}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
 
       <div style={styles.grid}>
         {sessions.map((session) => (
@@ -176,6 +232,7 @@ export default function AdminSessionsList() {
 // ---------------- Styles ----------------
 
 const styles = {
+  
   container: {
     padding: "30px",
     fontFamily: "Arial, sans-serif"
